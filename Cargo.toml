@@ -1,0 +1,3 @@
+[workspace]
+members = ["rustsbi-k510", "xtask", "test-kernel"]
+default-members = ["xtask"]

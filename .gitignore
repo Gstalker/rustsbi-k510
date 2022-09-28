@@ -1,0 +1,8 @@
+/target
+.idea
+**/.*/*
+!/.github/*
+!/.cargo/*
+!/.vscode/settings.json
+
+/*.asm
