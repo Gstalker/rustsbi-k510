@@ -18,7 +18,7 @@ mod test;
 mod constants {
     pub(crate) const LEN_PAGE: usize = 4096; // 4KiB
     pub(crate) const PER_HART_STACK_SIZE: usize = 4 * LEN_PAGE; // 16KiB
-    pub(crate) const MAX_HART_NUMBER: usize = 8; // assume 8 cores in QEMU
+    pub(crate) const MAX_HART_NUMBER: usize = 2; // 2 cores in K510
     pub(crate) const STACK_SIZE: usize = PER_HART_STACK_SIZE * MAX_HART_NUMBER;
 }
 
@@ -59,7 +59,7 @@ unsafe extern "C" fn _start(hartid: usize, device_tree_paddr: usize) -> ! {
 
 /// 为每个核记录一个预期的陷入原因，实现陷入代理测试。
 /// 总是可以安全地使用，因为这是（硬件）线程独立变量。
-static mut EXPECTED: [Option<Trap>; 8] = [None; 8];
+static mut EXPECTED: [Option<Trap>; 2] = [None; 2];
 
 extern "C" fn primary_rust_main(hartid: usize, dtb_pa: usize) -> ! {
     zero_bss();
