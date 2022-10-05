@@ -1,0 +1,341 @@
+/dts-v1/;
+#include <dt-bindings/pinctrl/k510.h>
+
+/ {
+	#address-cells = <2>;
+	#size-cells = <2>;
+	compatible = "andestech,ax25";
+	model = "andestech,ax25";
+
+	aliases {
+		uart0 = &serial0;
+	};
+
+	chosen {
+		bootargs = "console=ttyS0,38400n8  debug loglevel=7";
+		stdout-path = "uart0:38400n8";
+	};
+
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		timebase-frequency = <1250000>;
+		CPU0: cpu@0 {
+			device_type = "cpu";
+			reg = <0>;
+			status = "okay";
+			compatible = "riscv";
+			riscv,isa = "rv64imafdc";
+			riscv,priv-major = <1>;
+			riscv,priv-minor = <10>;
+			mmu-type = "riscv,sv39";
+			clock-frequency = <500000000>;
+			i-cache-size = <0x8000>;
+			i-cache-line-size = <32>;
+			d-cache-size = <0x8000>;
+			d-cache-line-size = <32>;
+			next-level-cache = <&L2>;
+			CPU0_intc: interrupt-controller {
+				#interrupt-cells = <1>;
+				interrupt-controller;
+				compatible = "riscv,cpu-intc";
+			};
+		};
+		CPU1: cpu@1 {
+			device_type = "cpu";
+			reg = <1>;
+			status = "okay";
+			compatible = "riscv";
+			riscv,isa = "rv64imafdc";
+			riscv,priv-major = <1>;
+			riscv,priv-minor = <10>;
+			mmu-type = "riscv,sv39";
+			clock-frequency = <500000000>;
+			i-cache-size = <0x8000>;
+			i-cache-line-size = <32>;
+			d-cache-size = <0x8000>;
+			d-cache-line-size = <32>;
+			next-level-cache = <&L2>;
+			CPU1_intc: interrupt-controller {
+				#interrupt-cells = <1>;
+				interrupt-controller;
+				compatible = "riscv,cpu-intc";
+			};
+		};
+	};
+
+	L2: l2-cache@9E900000 {
+		compatible = "cache";
+		cache-level = <2>;
+		cache-size = <0x100000>;
+		reg = <0x0 0x9E900000 0x0 0x100000>;
+		andes,inst-prefetch = <3>;
+		andes,data-prefetch = <3>;
+		// The value format is <XRAMOCTL XRAMICTL>
+		andes,tag-ram-ctl = <0 0>;
+		andes,data-ram-ctl = <0 0>;
+	};
+
+	memory@0 {
+		device_type = "memory";
+		reg = <0x0 0x00000000 0x0 0x20000000>;
+	};
+
+	soc {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		compatible = "simple-bus";
+		ranges;
+
+	plic0: interrupt-controller@9A000000 {
+		compatible = "riscv,plic0";
+		#address-cells = <2>;
+		#interrupt-cells = <2>;
+		interrupt-controller;
+		reg = <0x0 0x9A000000 0x0 0x4000000>;
+		riscv,ndev=<140>;
+			interrupts-extended = <&CPU0_intc 11 &CPU0_intc 9
+								&CPU1_intc 11 &CPU1_intc 9>;
+	};
+
+	plic1: interrupt-controller@9E400000 {
+		compatible = "riscv,plic1";
+		#address-cells = <2>;
+		#interrupt-cells = <2>;
+		interrupt-controller;
+		reg = <0x0 0x9E400000 0x0 0x400000>;
+			riscv,ndev=<2>;
+			interrupts-extended = <&CPU0_intc 3 &CPU1_intc 3>;
+	};
+
+	plmt0@9E000000 {
+		compatible = "riscv,plmt0";
+			interrupts-extended = <&CPU0_intc 7 &CPU1_intc 7>;
+			reg = <0x0 0x9E000000 0x0 0x100000>;
+		};
+       };
+
+	refclk: virt_50mhz {
+		#clock-cells = <0>;
+		compatible = "fixed-clock";
+		clock-frequency = <50000000>;
+	};
+
+        refclk_spi: virt_250mhz {
+                #clock-cells = <0>;
+                compatible = "fixed-clock";
+                clock-frequency = <250000000>;
+        };
+
+        sdclk: virt_200mhz {
+                #clock-cells = <1>;
+                compatible = "fixed-clock";
+                clock-frequency = <200000000>;
+        };
+
+	serial0: serial@96000000 {
+		compatible = "andestech,uart16550", "ns16550a";
+		reg = <0x0 0x96000000 0x0 0x1000>;
+		interrupts = <25 4>;
+		clock-frequency = <25000000>;
+		reg-shift = <2>;
+                reg-io-width = <4>;
+		no-loopback-test = <1>;
+		interrupt-parent = <&plic0>;
+	};
+
+  serial1: serial@96010000 {
+    compatible = "andestech,uart16550", "ns16550a";
+    reg = <0x0 0x96010000 0x0 0x1000>;
+    interrupts = <26 4>;
+    clock-frequency = <25000000>;
+    reg-shift = <2>;
+    reg-io-width = <4>;
+    no-loopback-test = <1>;
+    interrupt-parent = <&plic0>;
+  };
+
+  serial2: serial@96020000 {
+    compatible = "andestech,uart16550", "ns16550a";
+    reg = <0x0 0x96020000 0x0 0x1000>;
+    interrupts = <27 4>;
+    clock-frequency = <25000000>;
+    reg-shift = <2>;
+    reg-io-width = <4>;
+    no-loopback-test = <1>;
+    interrupt-parent = <&plic0>;
+  };
+
+  spi0: spi@96080000 {
+    compatible = "snps,dwc-ssi-1.01a";
+    reg = <0x0 0x96080000 0x0 0x1000>;
+    #address-cells = <1>;
+    #size-cells = <0>;
+    num-cs = <4>;
+    clocks = <&refclk_spi>;
+    spi-max-frequency = <50000000>;
+    reg-io-width = <4>;
+    interrupts = <3 4>;
+    interrupt-parent = <&plic0>;
+    snps,dfs-offset = <0>;
+    snps,frf-offset = <6>;
+    snps,mode-offset = <8>;
+    snps,tmod-offset = <10>;
+    spi-nand@0 {
+            #address-cells = <1>;
+            #size-cells = <1>;
+            compatible = "spi-nand";
+            spi-max-frequency = <20000000>;
+            reg = <0>;
+            partition@0 {
+                    label = "uboot";
+                    reg = <0x00000000 0x00200000>;
+            };
+
+            partition@200000 {
+                    label = "kernel";
+                    reg = <0x00200000 0x01E00000>;
+            };
+
+            partition@2000000 {
+                    label = "rootfs";
+                    reg = <0x02000000 0x06000000>;
+            };
+    };
+  };
+
+    macb0: ethernet@93030000 {
+        compatible = "cdns,macb";
+        reg = <0x0 0x93030000 0x0 0x10000>;
+        phy-mode = "rgmii";
+        interrupts = <54 4>;
+        interrupt-parent = <&plic0>;
+        clocks = <&refclk>, <&refclk>;
+        clock-names = "hclk", "pclk";
+    };
+
+
+    iomux: iomux@97040000 {
+        compatible = "pinctrl-single";
+        reg = <0x0 0x97040000 0x0 0x10000>;
+        #address-cells = <1>;
+        #size-cells = <0>;
+        #pinctrl-cells = <1>;
+        pinctrl-single,register-width = <32>;
+        pinctrl-single,function-mask = <0xffffffff>;
+    };
+
+    emmc: mmc0@93000000 {
+        compatible = "socionext,uniphier-sd4hc", "cdns,sd4hc";
+        reg = <0x0 0x93000000 0x0 0x400>;
+        interrupts = <48 4>;
+        interrupt-parent = <&plic0>;
+        clocks = <&sdclk 4>;
+        max-frequency = <200000000>;
+        cap-mmc-highspeed;
+        bus-width = <8>;
+    };
+
+    sd: mmc2@93020000 {
+        compatible = "socionext,uniphier-sd4hc", "cdns,sd4hc";
+        reg = <0x0 0x93020000 0x0 0x400>;
+        interrupts = <50 4>;
+        interrupt-parent = <&plic0>;
+        clocks = <&sdclk 4>;
+        max-frequency = <200000000>;
+        cap-sd-highspeed;
+        bus-width = <1>;
+    };
+
+};
+
+    &iomux {
+        pinctrl-names = "default";
+        pinctrl-0 = <&uart0_pins &emac_pins &spi0_pins &mmc0_pins &mmc2_pins>;
+
+        uart0_pins: iomux_uart0_pins {
+            pinctrl-single,pins = <
+              (112*4) (0x54<<16 | 0x3<<10 | 0x1<<7 | 0x1<<5 | 0x1<<3)    /* uart0_rxd */
+              (113*4) (0x5a<<16 | 0x3<<10 | 0x1<<6 | 0x1<<5 | 0x1<<3 | 0x1)    /* uart0_txd */
+            >;
+        };
+/*
+        emac_pins: iomux_emac_pins {
+            pinctrl-single,pins = <
+              (IO_EMAC_MDC*4) (MUXPIN_OE_EN | MUXPIN_DRIVING_7<<MUXPIN_DRIVING_OFF)
+              (IO_EMAC_MDIO*4) (MUXPIN_IE_EN |MUXPIN_OE_EN | MUXPIN_DRIVING_7<<MUXPIN_DRIVING_OFF)
+              (IO_EMAC_RX_ER*4) (MUXPIN_IE_EN | MUXPIN_DRIVING_7<<MUXPIN_DRIVING_OFF)
+              (IO_EMAC_TX_EN*4) (MUXPIN_OE_EN | MUXPIN_DRIVING_7<<MUXPIN_DRIVING_OFF)
+              (IO_EMAC_CRS*4) (MUXPIN_IE_EN | MUXPIN_DRIVING_7<<MUXPIN_DRIVING_OFF)
+              (IO_EMAC_TX_D0*4) (MUXPIN_OE_EN | MUXPIN_DRIVING_7<<MUXPIN_DRIVING_OFF)
+              (IO_EMAC_TX_D1*4) (MUXPIN_OE_EN | MUXPIN_DRIVING_7<<MUXPIN_DRIVING_OFF)
+              (IO_EMAC_RX_D0*4) (MUXPIN_IE_EN | MUXPIN_DRIVING_7<<MUXPIN_DRIVING_OFF)
+              (IO_EMAC_RX_D1*4) (MUXPIN_IE_EN | MUXPIN_DRIVING_7<<MUXPIN_DRIVING_OFF)
+              (IO_EMAC_REF_OUT*4) (MUXPIN_IE_EN | MUXPIN_DRIVING_7<<MUXPIN_DRIVING_OFF)
+            >;
+        };
+*/
+         //RGMII
+        emac_pins: iomux_emac_pins {
+            pinctrl-single,pins = <
+              (IO_EMAC_MDC*4) (MUXPIN_OE_EN | MUXPIN_IO_MSC | MUXPIN_DRIVING_7<<MUXPIN_DRIVING_OFF)
+              (IO_EMAC_MDIO*4) (MUXPIN_IE_EN |MUXPIN_OE_EN | MUXPIN_IO_MSC | MUXPIN_DRIVING_7<<MUXPIN_DRIVING_OFF)
+              (IO_EMAC_TX_CLK_OUT*4) (MUXPIN_OE_EN | MUXPIN_IO_MSC | MUXPIN_DRIVING_7<<MUXPIN_DRIVING_OFF)
+              (IO_EMAC_TX_CTL*4) (MUXPIN_OE_EN | MUXPIN_IO_MSC | MUXPIN_DRIVING_7<<MUXPIN_DRIVING_OFF)
+              (IO_EMAC_TX_D0*4) (MUXPIN_OE_EN | MUXPIN_IO_MSC | MUXPIN_DRIVING_7<<MUXPIN_DRIVING_OFF)
+              (IO_EMAC_TX_D1*4) (MUXPIN_OE_EN | MUXPIN_IO_MSC | MUXPIN_DRIVING_7<<MUXPIN_DRIVING_OFF)
+              (IO_EMAC_TX_D2*4) (MUXPIN_OE_EN | MUXPIN_IO_MSC | MUXPIN_DRIVING_7<<MUXPIN_DRIVING_OFF)
+              (IO_EMAC_TX_D3*4) (MUXPIN_OE_EN | MUXPIN_IO_MSC | MUXPIN_DRIVING_7<<MUXPIN_DRIVING_OFF)
+              (IO_EMAC_RX_CLK_IN*4) (MUXPIN_IE_EN | MUXPIN_IO_MSC | MUXPIN_DRIVING_7<<MUXPIN_DRIVING_OFF)
+              (IO_EMAC_RX_CTL*4) (MUXPIN_IE_EN | MUXPIN_IO_MSC | MUXPIN_DRIVING_7<<MUXPIN_DRIVING_OFF)
+              (IO_EMAC_RX_D0*4) (MUXPIN_IE_EN | MUXPIN_IO_MSC |MUXOIN_PU | MUXPIN_DRIVING_7<<MUXPIN_DRIVING_OFF)
+              (IO_EMAC_RX_D1*4) (MUXPIN_IE_EN | MUXPIN_IO_MSC |MUXOIN_PU | MUXPIN_DRIVING_7<<MUXPIN_DRIVING_OFF)
+              (IO_EMAC_RX_D2*4) (MUXPIN_IE_EN | MUXPIN_IO_MSC | MUXPIN_DRIVING_7<<MUXPIN_DRIVING_OFF)
+              (IO_EMAC_RX_D3*4) (MUXPIN_IE_EN | MUXPIN_IO_MSC | MUXPIN_DRIVING_7<<MUXPIN_DRIVING_OFF)
+            >;
+        };
+
+        spi0_pins: iomux_spi0_pins {
+            pinctrl-single,pins = <
+              (IO_SPI0_CLK*4) (MUXPIN_OE_EN | MUXPIN_DRIVING_7<<MUXPIN_DRIVING_OFF)
+              (IO_SPI0_CS*4) (MUXPIN_OE_EN | MUXPIN_DRIVING_7<<MUXPIN_DRIVING_OFF)
+              (IO_SPI0_D0*4) (MUXPIN_IE_EN | MUXPIN_OE_EN | MUXPIN_DRIVING_7<<MUXPIN_DRIVING_OFF)
+              (IO_SPI0_D1*4) (MUXPIN_IE_EN | MUXPIN_OE_EN | MUXPIN_DRIVING_7<<MUXPIN_DRIVING_OFF)
+              (IO_SPI0_D2*4) (MUXPIN_IE_EN | MUXPIN_OE_EN | MUXPIN_DRIVING_7<<MUXPIN_DRIVING_OFF)
+              (IO_SPI0_D3*4) (MUXPIN_IE_EN | MUXPIN_OE_EN | MUXPIN_DRIVING_7<<MUXPIN_DRIVING_OFF)
+              (IO_SPI0_D4*4) (MUXPIN_IE_EN | MUXPIN_OE_EN | MUXPIN_DRIVING_7<<MUXPIN_DRIVING_OFF)
+              (IO_SPI0_D5*4) (MUXPIN_IE_EN | MUXPIN_OE_EN | MUXPIN_DRIVING_7<<MUXPIN_DRIVING_OFF)
+              (IO_SPI0_D6*4) (MUXPIN_IE_EN | MUXPIN_OE_EN | MUXPIN_DRIVING_7<<MUXPIN_DRIVING_OFF)
+              (IO_SPI0_D7*4) (MUXPIN_IE_EN | MUXPIN_OE_EN | MUXPIN_DRIVING_7<<MUXPIN_DRIVING_OFF)
+              (IO_SPI0_ARB*4) (MUXPIN_IE_EN | MUXPIN_DRIVING_7<<MUXPIN_DRIVING_OFF)
+            >;
+        };
+
+        mmc0_pins: iomux_mmc0_pins {
+            pinctrl-single,pins = <
+              (IO_MMC0_CLK*4) (MUXPIN_OE_EN | MUXPIN_DRIVING_7<<MUXPIN_DRIVING_OFF)
+              (IO_MMC0_CMD*4) (MUXPIN_IE_EN |MUXPIN_OE_EN | MUXPIN_DRIVING_7<<MUXPIN_DRIVING_OFF)
+              (IO_MMC0_DATA7*4) (MUXPIN_IE_EN |MUXPIN_OE_EN | MUXPIN_DRIVING_7<<MUXPIN_DRIVING_OFF)
+              (IO_MMC0_DATA6*4) (MUXPIN_IE_EN |MUXPIN_OE_EN | MUXPIN_DRIVING_7<<MUXPIN_DRIVING_OFF)
+              (IO_MMC0_DATA5*4) (MUXPIN_IE_EN |MUXPIN_OE_EN | MUXPIN_DRIVING_7<<MUXPIN_DRIVING_OFF)
+              (IO_MMC0_DATA4*4) (MUXPIN_IE_EN |MUXPIN_OE_EN | MUXPIN_DRIVING_7<<MUXPIN_DRIVING_OFF)
+              (IO_MMC0_DATA3*4) (MUXPIN_IE_EN |MUXPIN_OE_EN | MUXPIN_DRIVING_7<<MUXPIN_DRIVING_OFF)
+              (IO_MMC0_DATA2*4) (MUXPIN_IE_EN |MUXPIN_OE_EN | MUXPIN_DRIVING_7<<MUXPIN_DRIVING_OFF)
+              (IO_MMC0_DATA1*4) (MUXPIN_IE_EN |MUXPIN_OE_EN | MUXPIN_DRIVING_7<<MUXPIN_DRIVING_OFF)
+              (IO_MMC0_DATA0*4) (MUXPIN_IE_EN |MUXPIN_OE_EN | MUXPIN_DRIVING_7<<MUXPIN_DRIVING_OFF)
+            >;
+        };
+
+        mmc2_pins: iomux_mmc2_pins {
+            pinctrl-single,pins = <
+              (IO_MMC2_CLK*4) (MUXPIN_OE_EN | MUXPIN_DRIVING_7<<MUXPIN_DRIVING_OFF)
+              (IO_MMC2_CMD*4) (MUXPIN_IE_EN |MUXPIN_OE_EN | MUXPIN_DRIVING_7<<MUXPIN_DRIVING_OFF)
+              (IO_MMC2_DATA3*4) (MUXPIN_IE_EN |MUXPIN_OE_EN | MUXPIN_DRIVING_7<<MUXPIN_DRIVING_OFF)
+              (IO_MMC2_DATA2*4) (MUXPIN_IE_EN |MUXPIN_OE_EN | MUXPIN_DRIVING_7<<MUXPIN_DRIVING_OFF)
+              (IO_MMC2_DATA1*4) (MUXPIN_IE_EN |MUXPIN_OE_EN | MUXPIN_DRIVING_7<<MUXPIN_DRIVING_OFF)
+              (IO_MMC2_DATA0*4) (MUXPIN_IE_EN |MUXPIN_OE_EN | MUXPIN_DRIVING_7<<MUXPIN_DRIVING_OFF)
+            >;
+        };
+
+    };
+
