@@ -230,9 +230,9 @@ checksum = "bd7a31eed1591dcbc95d92ad7161908e72f4677f8fabf2a32ca49b4237cbf211"
 
 [[package]]
 name = "riscv"
-version = "0.8.0"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5e2856a701069e2d262b264750d382407d272d5527f7a51d3777d1805b4e2d3c"
+checksum = "73fc4bc7113424814738fe79755a5764e392b3d4d1bc757e6aa6f61cede32095"
 dependencies = [
  "bare-metal",
  "bit_field",
@@ -241,12 +241,12 @@ dependencies = [
 
 [[package]]
 name = "rustsbi"
-version = "0.3.0-alpha.2"
+version = "0.3.0-alpha.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5697645411c21e33776cddebf26f19f98a2405ff82e88d11b2bc35dc8a8b6d59"
+checksum = "0ffd816cc6c1abe4662ddef08d3dc9b6fe02cdba388bb461d2418f5c183615f3"
 dependencies = [
  "riscv",
- "sbi-spec 0.0.2",
+ "sbi-spec",
 ]
 
 [[package]]
@@ -270,22 +270,21 @@ checksum = "97477e48b4cf8603ad5f7aaf897467cf42ab4218a38ef76fb14c2d6773a6d6a8"
 
 [[package]]
 name = "sbi-rt"
-version = "0.1.0"
-source = "git+https://github.com/rustsbi/sbi-rt.git?rev=2933f8d5#2933f8d5542058a8d6435e59a90b0ad74e0c42f6"
+version = "0.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "07f27f053b4d773f8027cd703baed9764f730a058006da4947522394515afe8c"
 dependencies = [
- "sbi-spec 0.1.0",
+ "sbi-spec",
 ]
 
 [[package]]
 name = "sbi-spec"
-version = "0.0.2"
+version = "0.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7b617d3b07d7bcdeb0590d4fea9460b004fbc5ecfc975993b9cbcc3a2f67fcce"
-
-[[package]]
-name = "sbi-spec"
-version = "0.1.0"
-source = "git+https://github.com/rustsbi/sbi-spec.git?rev=a0fd76b#a0fd76bc5e74ad978d1d07d8f064ca45fa14dd9c"
+checksum = "ab331a5c9852a6587ea9fc74bdda950d7dfc7076aa791434d45cbc2001ba5c7c"
+dependencies = [
+ "static_assertions",
+]
 
 [[package]]
 name = "scopeguard"
@@ -301,6 +300,12 @@ checksum = "7f6002a767bff9e83f8eeecf883ecb8011875a21ae8da43bffb817a57e78cc09"
 dependencies = [
  "lock_api",
 ]
+
+[[package]]
+name = "static_assertions"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
 name = "strsim"
