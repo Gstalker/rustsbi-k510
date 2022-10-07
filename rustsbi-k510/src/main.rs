@@ -120,7 +120,7 @@ extern "C" fn rust_main(_hartid: usize, opaque: usize) -> Operation {
     static GENESIS: AtomicBool = AtomicBool::new(false);
 
     static SERIAL: Once<ns16550a::Ns16550a> = Once::new();
-    // static BOARD_INFO: Once<BoardInfo> = Once::new();
+    static BOARD_INFO: Once<BoardInfo> = Once::new();
     static CSR_PRINT: AtomicBool = AtomicBool::new(false);
 
     // 全局初始化过程
@@ -134,7 +134,7 @@ extern "C" fn rust_main(_hartid: usize, opaque: usize) -> Operation {
         } else {
             opaque
         };
-        // let board_info = BOARD_INFO.call_once(|| device_tree::parse(opaque));
+        let board_info = BOARD_INFO.call_once(|| device_tree::parse(opaque));
 
         // 初始化外设
         rustsbi::legacy_stdio::init_legacy_stdio(
