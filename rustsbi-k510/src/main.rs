@@ -9,7 +9,6 @@ mod execute;
 mod hart_csr_utils;
 mod ns16550a;
 mod k510_hsm;
-mod qemu_test;
 
 #[macro_use] // for print
 extern crate rustsbi;
@@ -29,6 +28,10 @@ mod constants {
     pub(crate) const NUM_HART_MAX: usize = 2;
     /// SBI 软件全部栈空间容量。
     pub(crate) const LEN_STACK_SBI: usize = LEN_STACK_PER_HART * NUM_HART_MAX;
+    /// clint 基址
+    pub(crate) const BASE_CLINT: usize = 0x0200_0000;
+    /// uart0 基址
+    pub(crate) const BASE_UART0: usize = 0x9600_0000;
 }
 
 /// 特权软件信息。
@@ -39,15 +42,10 @@ struct Supervisor {
 
 #[cfg_attr(not(test), panic_handler)]
 fn panic(info: &core::panic::PanicInfo) -> ! {
-    use rustsbi::{
-        spec::srst::{RESET_REASON_SYSTEM_FAILURE, RESET_TYPE_SHUTDOWN},
-        Reset,
-    };
     // 输出的信息大概是“[rustsbi-panic] hart 0 panicked at ...”
     println!("[rustsbi-panic] hart {} {info}", hart_id());
     println!("[rustsbi-panic] system shutdown scheduled due to RustSBI panic");
-    qemu_test::get().system_reset(RESET_TYPE_SHUTDOWN, RESET_REASON_SYSTEM_FAILURE);
-    unreachable!()
+    loop{}
 }
 
 /// 入口。
@@ -122,7 +120,7 @@ extern "C" fn rust_main(_hartid: usize, opaque: usize) -> Operation {
     static GENESIS: AtomicBool = AtomicBool::new(false);
 
     static SERIAL: Once<ns16550a::Ns16550a> = Once::new();
-    static BOARD_INFO: Once<BoardInfo> = Once::new();
+    // static BOARD_INFO: Once<BoardInfo> = Once::new();
     static CSR_PRINT: AtomicBool = AtomicBool::new(false);
 
     // 全局初始化过程
@@ -136,20 +134,19 @@ extern "C" fn rust_main(_hartid: usize, opaque: usize) -> Operation {
         } else {
             opaque
         };
-        let board_info = BOARD_INFO.call_once(|| device_tree::parse(opaque));
+        // let board_info = BOARD_INFO.call_once(|| device_tree::parse(opaque));
 
         // 初始化外设
         rustsbi::legacy_stdio::init_legacy_stdio(
-            SERIAL.call_once(|| unsafe { ns16550a::Ns16550a::new(board_info.uart.start) }),
+            SERIAL.call_once(|| unsafe { ns16550a::Ns16550a::new(BASE_UART0) }),
         );
 
-        clint::init(board_info.clint.start);
-        qemu_test::init(board_info.test.start);
-        let hsm = HSM.call_once(|| k510_hsm::K510Hsm::new(clint::get(), NUM_HART_MAX, opaque));
+        clint::init(BASE_CLINT);
+        let hsm = HSM.call_once(|| k510_hsm::K510Hsm::new(NUM_HART_MAX, opaque));
         // 初始化 SBI 服务
-        rustsbi::init_ipi(clint::get());
-        rustsbi::init_timer(clint::get());
-        rustsbi::init_reset(qemu_test::get());
+        rustsbi::init_ipi(&clint::Clint);
+        rustsbi::init_timer(&clint::Clint);
+        // rustsbi::init_reset(qemu_test::get());
         rustsbi::init_hsm(hsm);
         // 打印启动信息
         print!(
