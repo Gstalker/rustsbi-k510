@@ -111,6 +111,9 @@ extern "C" fn early_trap() -> ! {
 
 static HSM: Once<k510_hsm::K510Hsm> = Once::new();
 
+// TODO - 暂时硬编码，未来适配核心版
+static DEVICE_TREE: & 'static [u8] = include_bytes!("k510_crb_lp3_v1_2.dtb");
+
 /// rust 入口。
 extern "C" fn rust_main(_hartid: usize, opaque: usize) -> Operation {
     unsafe { set_mtvec(early_trap as _) };
@@ -127,7 +130,14 @@ extern "C" fn rust_main(_hartid: usize, opaque: usize) -> Operation {
         // 清零 bss 段
         zero_bss();
         // 解析设备树
+        let opaque = if opaque == 0 {
+            // 如果上一级没有填写设备树文件，这一级填写
+            DEVICE_TREE.as_ptr() as usize
+        } else {
+            opaque
+        };
         let board_info = BOARD_INFO.call_once(|| device_tree::parse(opaque));
+
         // 初始化外设
         rustsbi::legacy_stdio::init_legacy_stdio(
             SERIAL.call_once(|| unsafe { ns16550a::Ns16550a::new(board_info.uart.start) }),
