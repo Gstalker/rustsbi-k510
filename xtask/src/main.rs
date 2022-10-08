@@ -1,10 +1,12 @@
 #[macro_use]
 extern crate clap;
 
+
 use clap::Parser;
-use command_ext::{BinUtil, Cargo, CommandExt, Qemu};
+use command_ext::{BinUtil, Cargo, CommandExt};
 use std::{
     fs,
+    process::Command,
     path::{Path, PathBuf},
 };
 
@@ -26,6 +28,7 @@ enum Commands {
     Make(BuildArgs),
     Asm(AsmArgs),
     K510(K510Args),
+    TestSDCardImage(TestSDCardImageArgs),
 }
 
 fn main() {
@@ -34,6 +37,7 @@ fn main() {
         Make(args) => args.make(),
         Asm(args) => args.dump(),
         K510(args) => args.run(),
+        TestSDCardImage(args) => args.run(),
     }
 }
 
@@ -170,22 +174,73 @@ impl K510Args {
     fn run(mut self) {
         self.build.kernel.get_or_insert_with(|| "test".into());
         self.build.make();
-        if let Some(p) = &self.qemu_dir {
-            Qemu::search_at(p);
-        }
-        Qemu::system(self.build.arch())
-            .args(&["-machine", "virt"])
-            .arg("-bios")
-            .arg(self.build.dir().join("rustsbi-k510.bin"))
-            .arg("-kernel")
-            .arg(self.build.dir().join("test-kernel.bin"))
-            .args(&["-smp", &self.smp.unwrap_or(8).to_string()])
-            .args(&["-serial", "mon:stdio"])
-            .arg("-nographic")
-            .optional(&self.gdb, |qemu, gdb| {
-                qemu.args(&["-gdb", &format!("tcp::{gdb}")]);
-            })
-            .invoke();
+        // if let Some(p) = &self.qemu_dir {
+        //     Qemu::search_at(p);
+        // }
+        // Qemu::system(self.build.arch())
+        //     .args(&["-machine", "virt"])
+        //     .arg("-bios")
+        //     .arg(self.build.dir().join("rustsbi-k510.bin"))
+        //     .arg("-kernel")
+        //     .arg(self.build.dir().join("test-kernel.bin"))
+        //     .args(&["-smp", &self.smp.unwrap_or(8).to_string()])
+        //     .args(&["-serial", "mon:stdio"])
+        //     .arg("-nographic")
+        //     .optional(&self.gdb, |qemu, gdb| {
+        //         qemu.args(&["-gdb", &format!("tcp::{gdb}")]);
+        //     })
+        //     .invoke();
+    }
+}
+
+#[derive(Args, Default)]
+struct TestSDCardImageArgs {
+    #[clap(flatten)]
+    build: BuildArgs,
+}
+
+impl TestSDCardImageArgs {
+    fn run(mut self) {
+        self.build.kernel.get_or_insert_with(|| "test".into());
+        self.build.make();
+
+        // artifact path
+        let image_output = self.build.dir().join("test-sdcard-image.img");
+
+        // working directories for "genimage"
+        let image_buildroot = self.build.dir().join("genimage");
+        let image_dir = image_buildroot.join("images");
+        let input_dir = image_buildroot.join("input");
+        let tmp_dir = image_buildroot.join("tmp");
+        let root_dir = image_buildroot.join("root");
+        fs::create_dir_all(&input_dir).unwrap();
+        fs::create_dir_all(&tmp_dir).unwrap();
+        fs::create_dir_all(&root_dir).unwrap();
+        fs::copy(
+            self.build.dir().join("rustsbi-k510.bin"),
+            &input_dir.join("rustsbi-k510.bin"),
+        ).unwrap();
+        fs::copy(
+            self.build.dir().join("test-kernel.bin"),
+            &input_dir.join("kernel.bin")
+        ).unwrap();
+        fs::copy(
+            PROJECT_DIR.join("rustsbi-k510/src/k510_crb_lp3_v1_2.dtb"),
+            &input_dir.join("k510.dtb")
+        ).unwrap();
+        fs::copy(
+            PROJECT_DIR.join("test-kernel/genimage-sdcard.cfg"),
+            self.build.dir().join("genimage/genimage.cfg")
+        ).unwrap();
+
+        let mut genimage = Command::new("genimage");
+        genimage.current_dir(&image_buildroot);
+        genimage.status().expect("genimage failed to execute");
+
+        fs::copy(
+            image_dir.join("sysimage-sdcard.img"),
+            image_output
+        ).unwrap();
     }
 }
 
