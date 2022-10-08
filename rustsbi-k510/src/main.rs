@@ -1,17 +1,14 @@
 #![feature(naked_functions, asm_sym, asm_const)]
 #![no_std]
 #![no_main]
-#![deny(warnings)]
 
+#[macro_use]
+mod ns16550a;
 mod clint;
 mod device_tree;
 mod execute;
 mod hart_csr_utils;
-mod ns16550a;
 mod k510_hsm;
-
-#[macro_use] // for print
-extern crate rustsbi;
 
 use constants::*;
 use core::sync::atomic::{AtomicBool, Ordering::AcqRel};
@@ -41,11 +38,11 @@ struct Supervisor {
 }
 
 #[cfg_attr(not(test), panic_handler)]
-fn panic(info: &core::panic::PanicInfo) -> ! {
+pub fn panic(info: &core::panic::PanicInfo) -> ! {
     // 输出的信息大概是“[rustsbi-panic] hart 0 panicked at ...”
     println!("[rustsbi-panic] hart {} {info}", hart_id());
     println!("[rustsbi-panic] system shutdown scheduled due to RustSBI panic");
-    loop{}
+    loop {}
 }
 
 /// 入口。
@@ -110,7 +107,7 @@ extern "C" fn early_trap() -> ! {
 static HSM: Once<k510_hsm::K510Hsm> = Once::new();
 
 // TODO - 暂时硬编码，未来适配核心版
-static DEVICE_TREE: & 'static [u8] = include_bytes!("k510_crb_lp3_v1_2.dtb");
+static DEVICE_TREE: &'static [u8] = include_bytes!("k510_crb_lp3_v1_2.dtb");
 
 /// rust 入口。
 extern "C" fn rust_main(_hartid: usize, opaque: usize) -> Operation {
@@ -119,7 +116,6 @@ extern "C" fn rust_main(_hartid: usize, opaque: usize) -> Operation {
     #[link_section = ".bss.uninit"] // 以免清零
     static GENESIS: AtomicBool = AtomicBool::new(false);
 
-    static SERIAL: Once<ns16550a::Ns16550a> = Once::new();
     static BOARD_INFO: Once<BoardInfo> = Once::new();
     static CSR_PRINT: AtomicBool = AtomicBool::new(false);
 
@@ -137,9 +133,7 @@ extern "C" fn rust_main(_hartid: usize, opaque: usize) -> Operation {
         let board_info = BOARD_INFO.call_once(|| device_tree::parse(opaque));
 
         // 初始化外设
-        rustsbi::legacy_stdio::init_legacy_stdio(
-            SERIAL.call_once(|| unsafe { ns16550a::Ns16550a::new(BASE_UART0) }),
-        );
+        ns16550a::SERIAL.call_once(|| unsafe { ns16550a::Ns16550a::new(BASE_UART0) });
 
         clint::init(BASE_CLINT);
         let hsm = HSM.call_once(|| k510_hsm::K510Hsm::new(NUM_HART_MAX, opaque));
