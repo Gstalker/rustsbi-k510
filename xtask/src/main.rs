@@ -204,6 +204,15 @@ impl TestSDCardImageArgs {
         self.build.kernel.get_or_insert_with(|| "test".into());
         self.build.make();
 
+        let mut app_shaaes = Command::new("python3");
+        app_shaaes.args([
+            "rustsbi-k510/app_shaaes.py", 
+            &self.build.dir().join("rustsbi-k510.bin").to_str().unwrap(),
+            &self.build.dir().join("rustsbi-k510-burn.bin").to_str().unwrap()
+            ]);
+        app_shaaes.status().expect("app_shaaes failed");
+        
+
         // artifact path
         let image_output = self.build.dir().join("test-sdcard-image.img");
 
@@ -217,8 +226,8 @@ impl TestSDCardImageArgs {
         fs::create_dir_all(&tmp_dir).unwrap();
         fs::create_dir_all(&root_dir).unwrap();
         fs::copy(
-            self.build.dir().join("rustsbi-k510.bin"),
-            &input_dir.join("rustsbi-k510.bin"),
+            self.build.dir().join("rustsbi-k510-burn.bin"),
+            &input_dir.join("rustsbi-k510-burn.bin"),
         ).unwrap();
         fs::copy(
             self.build.dir().join("test-kernel.bin"),
