@@ -13,6 +13,7 @@ pub(crate) struct BoardInfo {
     pub serial: [Range<usize>; 3], // k510有多个uart输出，引导启动时使用0号uart
     pub plic_count: usize,
     pub plic: [Range<usize>; 2],   // plic, k510 使用一个特殊的类plic组件来控制ipi, 也就是名为plic_sw的plic[1]
+    pub plmt: Range<usize>,        // andes Platform-Level Machine Timer
 }
 
 /// 在栈上存储有限长度字符串。
@@ -32,7 +33,8 @@ pub(crate) fn parse(opaque: usize) -> BoardInfo {
     const CPUS: &str = "cpus";
     const MEMORY: &str = "memory";
     const SERIAL: &str = "serial";
-    const PILC: &str = "interrupt-controller";
+    const PLIC: &str = "interrupt-controller";
+    const PLMT: &str = "plmt";
     const SOC: &str = "soc";
 
     let mut ans = BoardInfo {
@@ -44,6 +46,7 @@ pub(crate) fn parse(opaque: usize) -> BoardInfo {
         serial: [0..0, 0..0, 0..0],
         plic_count: 0,
         plic: [0..0, 0..0],
+        plmt: 0..0,
     };
     let dtb = unsafe {
         Dtb::from_raw_parts_filtered(opaque as _, |e| {
@@ -65,7 +68,7 @@ pub(crate) fn parse(opaque: usize) -> BoardInfo {
                     StepOver
                 }
             } else if current == Str::from(SOC) {
-                if name.starts_with(PILC) {
+                if name.starts_with(PLIC) || name.starts_with(PLMT){
                     StepInto
                 } else {
                     StepOver
@@ -88,14 +91,18 @@ pub(crate) fn parse(opaque: usize) -> BoardInfo {
                 ans.serial[ans.serial_count] = reg.next().unwrap();
                 ans.serial_count += 1;
                 StepOut
-            }  else if node.starts_with(PILC) {
+            }  else if node.starts_with(PLIC) {
                 ans.plic[ans.plic_count] = reg.next().unwrap();
                 ans.plic_count += 1;
                 StepOut
             } else if node.starts_with(MEMORY) {
                 ans.mem = reg.next().unwrap();
                 StepOut
-            } else {
+            } else if node.starts_with(PLMT) {
+                ans.plmt = reg.next().unwrap();
+                StepOut
+            }
+            else {
                 StepOver
             }
         }
