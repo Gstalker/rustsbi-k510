@@ -124,12 +124,9 @@ extern "C" fn rust_main(_hartid: usize, opaque: usize) -> Operation {
         // 清零 bss 段
         zero_bss();
         // 解析设备树
-        let opaque = if opaque == 0 {
-            // 如果上一级没有填写设备树文件，这一级填写
-            DEVICE_TREE.as_ptr() as usize
-        } else {
-            opaque
-        };
+        // 暂时不清k510的固件会给传入什么参数。
+        // 通过逆向k510-buildroot，发现在sdcard boot模式下，设备树等文件是uboot自行读取储存设备载入的。
+        let opaque= DEVICE_TREE.as_ptr() as usize;
         let board_info = BOARD_INFO.call_once(|| device_tree::parse(opaque));
 
         // 初始化外设

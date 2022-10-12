@@ -9,9 +9,10 @@ pub(crate) struct BoardInfo {
     pub model: StringInline<128>,
     pub smp: usize,
     pub mem: Range<usize>,
-    pub uart: Range<usize>,
-    pub test: Range<usize>,
-    pub clint: Range<usize>,
+    pub serial_count: usize,
+    pub serial: [Range<usize>; 3], // k510有多个uart输出，引导启动时使用0号uart
+    pub plic_count: usize,
+    pub plic: [Range<usize>; 2],   // plic, k510 使用一个特殊的类plic组件来控制ipi, 也就是名为plic_sw的plic[1]
 }
 
 /// 在栈上存储有限长度字符串。
@@ -30,19 +31,19 @@ pub(crate) fn parse(opaque: usize) -> BoardInfo {
     use dtb_walker::{Dtb, DtbObj, HeaderError as E, Property, Str, WalkOperation::*};
     const CPUS: &str = "cpus";
     const MEMORY: &str = "memory";
+    const SERIAL: &str = "serial";
+    const PILC: &str = "interrupt-controller";
     const SOC: &str = "soc";
-    const UART: &str = "uart";
-    const TEST: &str = "test";
-    const CLINT: &str = "clint";
 
     let mut ans = BoardInfo {
         dtb: opaque..opaque,
         model: StringInline(0, [0u8; 128]),
         smp: 0,
         mem: 0..0,
-        uart: 0..0,
-        test: 0..0,
-        clint: 0..0,
+        serial_count: 0,
+        serial: [0..0, 0..0, 0..0],
+        plic_count: 0,
+        plic: [0..0, 0..0],
     };
     let dtb = unsafe {
         Dtb::from_raw_parts_filtered(opaque as _, |e| {
@@ -55,13 +56,16 @@ pub(crate) fn parse(opaque: usize) -> BoardInfo {
         DtbObj::SubNode { name } => {
             let current = ctx.name();
             if ctx.is_root() {
-                if name == Str::from(CPUS) || name == Str::from(SOC) || name.starts_with(MEMORY) {
+                if name == Str::from(CPUS)
+                    || name == Str::from(SOC)
+                    || name.starts_with(MEMORY)
+                    || name.starts_with(SERIAL) {
                     StepInto
                 } else {
                     StepOver
                 }
             } else if current == Str::from(SOC) {
-                if name.starts_with(UART) || name.starts_with(TEST) || name.starts_with(CLINT) {
+                if name.starts_with(PILC) {
                     StepInto
                 } else {
                     StepOver
@@ -80,14 +84,13 @@ pub(crate) fn parse(opaque: usize) -> BoardInfo {
         }
         DtbObj::Property(Property::Reg(mut reg)) => {
             let node = ctx.name();
-            if node.starts_with(UART) {
-                ans.uart = reg.next().unwrap();
+            if node.starts_with(SERIAL) {
+                ans.serial[ans.serial_count] = reg.next().unwrap();
+                ans.serial_count += 1;
                 StepOut
-            } else if node.starts_with(TEST) {
-                ans.test = reg.next().unwrap();
-                StepOut
-            } else if node.starts_with(CLINT) {
-                ans.clint = reg.next().unwrap();
+            }  else if node.starts_with(PILC) {
+                ans.plic[ans.plic_count] = reg.next().unwrap();
+                ans.plic_count += 1;
                 StepOut
             } else if node.starts_with(MEMORY) {
                 ans.mem = reg.next().unwrap();
