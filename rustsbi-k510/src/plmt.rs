@@ -1,5 +1,5 @@
 use core::cell::UnsafeCell;
-use rustsbi::{spec::binary::SbiRet, HartMask, Ipi, Timer};
+use rustsbi::Timer;
 
 pub(crate) struct Plmt; //andes Platform-Level Machine Timer
 
@@ -69,7 +69,7 @@ pub mod mtimecmp {
                 addi sp, sp,  16
                 ret
             ",
-        mtimecmp_base = MTIMECMP_0_OFFSET
+        mtimecmp_base = const MTIMECMP_0_OFFSET,
         base = sym BASE,
         options(noreturn)
         )
