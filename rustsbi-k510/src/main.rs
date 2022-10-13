@@ -4,17 +4,20 @@
 
 #[macro_use]
 mod ns16550a;
-mod clint;
 mod device_tree;
 mod execute;
 mod hart_csr_utils;
 mod k510_hsm;
+mod plic_sw;
+mod plmt;
+mod cpu;
 
 use constants::*;
 use core::sync::atomic::{AtomicBool, Ordering::AcqRel};
 use device_tree::BoardInfo;
 use execute::Operation;
 use spin::Once;
+use cpu::hart_id;
 
 mod constants {
     /// 特权软件入口。
@@ -25,10 +28,6 @@ mod constants {
     pub(crate) const NUM_HART_MAX: usize = 2;
     /// SBI 软件全部栈空间容量。
     pub(crate) const LEN_STACK_SBI: usize = LEN_STACK_PER_HART * NUM_HART_MAX;
-    /// clint 基址
-    pub(crate) const BASE_CLINT: usize = 0x0200_0000;
-    /// uart0 基址
-    pub(crate) const BASE_UART0: usize = 0x9600_0000;
 }
 
 /// 特权软件信息。
@@ -40,7 +39,7 @@ struct Supervisor {
 #[cfg_attr(not(test), panic_handler)]
 pub fn panic(info: &core::panic::PanicInfo) -> ! {
     // 输出的信息大概是“[rustsbi-panic] hart 0 panicked at ...”
-    println!("[rustsbi-panic] hart {} {info}", hart_id());
+    println!("[rustsbi-panic] hart {} {}", hart_id(), info);
     println!("[rustsbi-panic] system shutdown scheduled due to RustSBI panic");
     loop {}
 }
@@ -110,7 +109,7 @@ static HSM: Once<k510_hsm::K510Hsm> = Once::new();
 static DEVICE_TREE: &'static [u8] = include_bytes!("k510_crb_lp3_v1_2.dtb");
 
 /// rust 入口。
-extern "C" fn rust_main(_hartid: usize, opaque: usize) -> Operation {
+extern "C" fn rust_main(_hartid: usize, _opaque: usize) -> Operation {
     unsafe { set_mtvec(early_trap as _) };
 
     #[link_section = ".bss.uninit"] // 以免清零
@@ -130,13 +129,14 @@ extern "C" fn rust_main(_hartid: usize, opaque: usize) -> Operation {
         let board_info = BOARD_INFO.call_once(|| device_tree::parse(opaque));
 
         // 初始化外设
-        ns16550a::SERIAL.call_once(|| unsafe { ns16550a::Ns16550a::new(BASE_UART0) });
+        ns16550a::SERIAL.call_once(|| unsafe { ns16550a::Ns16550a::new(board_info.serial[0].start) });
+        plic_sw::init(board_info.plic[1].start);
+        plmt::init(board_info.plmt.start);
 
-        clint::init(BASE_CLINT);
         let hsm = HSM.call_once(|| k510_hsm::K510Hsm::new(NUM_HART_MAX, opaque));
         // 初始化 SBI 服务
-        rustsbi::init_ipi(&clint::Clint);
-        rustsbi::init_timer(&clint::Clint);
+        rustsbi::init_ipi(&plic_sw::PlicSW);
+        rustsbi::init_timer(&plmt::Plmt);
         // rustsbi::init_reset(qemu_test::get());
         rustsbi::init_hsm(hsm);
         // 打印启动信息
@@ -232,11 +232,6 @@ fn set_pmp(board_info: &BoardInfo) {
         pmpcfg0::set_pmp(3, Range::TOR, Permission::RWX, false);
         pmpaddr3::write(mem.end >> 2);
     }
-}
-
-#[inline(always)]
-fn hart_id() -> usize {
-    riscv::register::mhartid::read()
 }
 
 #[inline(always)]

@@ -1,4 +1,4 @@
-use crate::{clint, hart_id, k510_hsm::K510Hsm, Supervisor};
+use crate::{hart_id, k510_hsm::K510Hsm, Supervisor, plmt, plic_sw};
 use core::arch::asm;
 use riscv::register::*;
 
@@ -12,8 +12,8 @@ pub(crate) fn execute_supervisor(hsm: &K510Hsm, supervisor: Supervisor) -> Opera
     let mut ctx = SupervisorContext::new(supervisor);
     mscratch::write(&mut ctx as *mut _ as _);
 
-    clint::msip::clear();
-    clint::mtimecmp::clear();
+    plic_sw::clear_ipi();
+    plmt::mtimecmp::clear();
     unsafe {
         asm!("csrw mideleg, {}", in(reg) !0);
         asm!("csrw medeleg, {}", in(reg) !0);
@@ -379,7 +379,7 @@ unsafe extern "C" fn mtimer() {
     "   mret",
     u64_max      = const u64::MAX,
     mip_stip     = const 1 << 5,
-    set_mtimecmp =   sym clint::mtimecmp::set_naked,
+    set_mtimecmp =   sym plmt::mtimecmp::set_naked,
     options(noreturn)
     )
 }
@@ -415,7 +415,7 @@ unsafe extern "C" fn msoft() {
     "   csrrw sp, mscratch, sp",
     // 返回
     "   mret",
-    clear_msip = sym clint::msip::clear_naked,
+    clear_msip = sym plic_sw::clear_ipi,
     options(noreturn)
     )
 }

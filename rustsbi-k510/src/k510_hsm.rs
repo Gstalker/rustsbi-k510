@@ -1,6 +1,6 @@
 //! Hart state monitor designed for QEMU
 
-use crate::{clint, entry, hart_id, Supervisor, NUM_HART_MAX, SUPERVISOR_ENTRY};
+use crate::{entry, hart_id, Supervisor, NUM_HART_MAX, SUPERVISOR_ENTRY, plic_sw, plmt};
 use core::{mem::MaybeUninit, sync::atomic::AtomicU8};
 use riscv::register::*;
 use rustsbi::spec::{binary::SbiRet, hsm as spec};
@@ -173,8 +173,8 @@ impl K510Hsm {
             asm!("csrrsi {0}, mstatus, 1 << 3", out(reg) mstatus); // 打开中断
             suspend();
             match mcause::read().cause() {
-                T::Interrupt(I::MachineTimer) => clint::mtimecmp::clear(),
-                T::Interrupt(I::MachineSoft) => clint::msip::clear(),
+                T::Interrupt(I::MachineTimer) => plmt::mtimecmp::clear(),
+                T::Interrupt(I::MachineSoft) => plic_sw::clear_ipi(),
                 t => panic!("unexpected trap: {t:?}"),
             }
             asm!("csrw mie,     {}", in(reg) mie); // 恢复中断屏蔽
@@ -215,7 +215,7 @@ impl rustsbi::Hsm for K510Hsm {
         // - It is not a valid physical address.
         // - The address is prohibited by PMP to run in supervisor mode. */
         *self.supervisor[hart_id].lock() = Some(Supervisor { start_addr, opaque });
-        clint::msip::send(hart_id);
+        plic_sw::send_ipi(hart_id);
         while state.load(Acquire) == START_PENDING {}
         // this does not block the current function
         // The following process is going to be handled in software interrupt handler,
