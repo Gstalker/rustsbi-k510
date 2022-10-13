@@ -10,6 +10,7 @@ mod hart_csr_utils;
 mod k510_hsm;
 mod plic_sw;
 mod plmt;
+mod reset;
 mod cpu;
 
 use constants::*;
@@ -61,8 +62,8 @@ unsafe extern "C" fn entry() -> ! {
     static mut SBI_STACK: [u8; LEN_STACK_SBI] = [0; LEN_STACK_SBI];
 
     core::arch::asm!(
-    // 关中断
-    "  csrw mie,  zero",
+    // // 关中断
+    // "  csrw mie,  zero",
     // 设置栈
     "  la    sp, {stack}
            li    t0, {per_hart_stack_size}
@@ -137,7 +138,7 @@ extern "C" fn rust_main(_hartid: usize, _opaque: usize) -> Operation {
         // 初始化 SBI 服务
         rustsbi::init_ipi(&plic_sw::PlicSW);
         rustsbi::init_timer(&plmt::Plmt);
-        // rustsbi::init_reset(qemu_test::get());
+        rustsbi::init_reset(&reset::Reset);
         rustsbi::init_hsm(hsm);
         // 打印启动信息
         print!(
