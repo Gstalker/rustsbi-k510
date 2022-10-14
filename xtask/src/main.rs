@@ -231,7 +231,7 @@ impl TestSDCardImageArgs {
         ).unwrap();
         fs::copy(
             self.build.dir().join("test-kernel.bin"),
-            &input_dir.join("kernel.bin")
+            &input_dir.join("kernel.image")
         ).unwrap();
         fs::copy(
             PROJECT_DIR.join("rustsbi-k510/src/k510_crb_lp3_v1_2.dtb"),
