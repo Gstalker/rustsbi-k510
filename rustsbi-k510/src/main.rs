@@ -3,7 +3,7 @@
 #![no_main]
 
 #[macro_use]
-mod ns16550a;
+mod uart;
 mod device_tree;
 mod execute;
 mod hart_csr_utils;
@@ -62,8 +62,8 @@ unsafe extern "C" fn entry() -> ! {
     static mut SBI_STACK: [u8; LEN_STACK_SBI] = [0; LEN_STACK_SBI];
 
     core::arch::asm!(
-    // // 关中断
-    // "  csrw mie,  zero",
+    // 关中断
+    "  csrw mie,  zero",
     // 设置栈
     "  la    sp, {stack}
            li    t0, {per_hart_stack_size}
@@ -130,7 +130,7 @@ extern "C" fn rust_main(_hartid: usize, _opaque: usize) -> Operation {
         let board_info = BOARD_INFO.call_once(|| device_tree::parse(opaque));
 
         // 初始化外设
-        ns16550a::SERIAL.call_once(|| unsafe { ns16550a::Ns16550a::new(board_info.serial[0].start) });
+        uart::init(board_info.serial[0].start);
         plic_sw::init(board_info.plic[1].start);
         plmt::init(board_info.plmt.start);
 
