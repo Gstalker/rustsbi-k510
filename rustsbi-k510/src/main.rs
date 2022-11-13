@@ -10,6 +10,7 @@ mod hart_csr_utils;
 mod k510_hsm;
 mod plic_sw;
 mod plmt;
+mod peripherals;
 mod reset;
 mod cpu;
 
