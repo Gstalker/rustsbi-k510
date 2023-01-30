@@ -55,10 +55,11 @@ pub fn sysctl_boot_get_root_clk_bypass(clk: SysctlClkNodeE) -> bool {
             | SysctlClkNodeE::SysctlClkRootPll3Div2
             | SysctlClkNodeE::SysctlClkRootPll3Div3
             | SysctlClkNodeE::SysctlClkRootPll3Div4  => {
-                (sysctl.0.pll2_cfg1.read().bits() >> 19) & 0x1 != 0
+                (sysctl.0.pll3_cfg1.read().bits() >> 19) & 0x1 != 0
             }
             _ => {
                 panic!("unsupported root clock!")
+                // return false
             }
         }
     }
@@ -116,10 +117,10 @@ pub fn sysctl_boot_get_root_clk_en(clk: SysctlClkNodeE) -> bool {
         let osc_25m_off_status = (( sysctl.0.osc_25m_off.read().bits() >> 0) & 1) == 0;
         match clk {
             SysctlClkNodeE::SysctlClkRootOscIn0 => {
-                false
+                osc_25m_off_status
             }
             SysctlClkNodeE::SysctlClkRootOscIn1 => {
-                osc_25m_off_status
+                true
             }
             SysctlClkNodeE::SysctlClkRootPll0
             | SysctlClkNodeE::SysctlClkRootPll0Div2
@@ -551,8 +552,661 @@ pub fn sysctl_clk_set_leaf_parent(leaf: SysctlClkNodeE, parent: SysctlClkNodeE) 
                 true
             }
             /*---------------------------AX25P------------------------------------*/
-            // TODO - 完成剩余内容
+            SysctlClkNodeE::SysctlClkAx25pSrc => {
+                let mut cfg: u32 = 0;
+                match parent {
+                    SysctlClkNodeE::SysctlClkRootPll2Div3 => {
+                        cfg = ((0 << 0) | (1 << 24));
+                    }
+                    SysctlClkNodeE::SysctlClkRootPll0 => {
+                        cfg = ((1 << 0) | (1 << 24));
+                    }
+                    _ => panic!("unsupported leaf node in sysctl_clk_set_leaf_parent!")
+                }
+                sysctl.0.ax25p_clk_cfg.write(|w| unsafe{ w.bits(cfg) });
+                true
+            }
+            SysctlClkNodeE::SysctlClkAx25pCore 
+            | SysctlClkNodeE::SysctlClkAx25pLm  => {
+                false
+            }
+            SysctlClkNodeE::SysctlClkAx25pMtimer => {
+                let mut cfg: u32 = 0;
+                match parent {
+                    SysctlClkNodeE::SysctlClkRootOscIn1 => {
+                        cfg = ((0 << 0) | (1 << 24));
+                    }
+                    SysctlClkNodeE::SysctlClkRootOscIn0 => {
+                        cfg = ((1 << 0) | (1 << 24));
+                    }
+                    _ => panic!("unsupported leaf node in sysctl_clk_set_leaf_parent!")
+                }
+                sysctl.0.ax25p_mtimer_clk_cfg.write(|w| unsafe{ w.bits(cfg) });
+                true
+            }
 
+            /*---------------------------GNNE------------------------------------*/
+            SysctlClkNodeE::SysctlClkGnneSys => {
+                let mut cfg: u32 = 0;
+                match parent {
+                    SysctlClkNodeE::SysctlClkRootPll0Div2 => {
+                        cfg = ((0 << 0) | (1 << 24));
+                    }
+                    SysctlClkNodeE::SysctlClkRootPll1Div2 => {
+                        cfg = ((1 << 0) | (1 << 24));
+                    }
+                    _ => panic!("unsupported leaf node in sysctl_clk_set_leaf_parent!")
+                }
+                sysctl.0.gnne_sysclk_cfg.write(|w| unsafe{ w.bits(cfg) });
+                true
+            }
+            SysctlClkNodeE::SysctlClkGnneAxi => {
+                let mut cfg: u32 = 0;
+                match parent {
+                    SysctlClkNodeE::SysctlClkRootPll0Div2 => {
+                        cfg = ((0 << 0) | (1 << 24));
+                    }
+                    SysctlClkNodeE::SysctlClkRootPll1Div2 => {
+                        cfg = ((1 << 0) | (1 << 24));
+                    }
+                    _ => panic!("unsupported leaf node in sysctl_clk_set_leaf_parent!")
+                }
+                sysctl.0.gnne_aclk_cfg.write(|w| unsafe { w.bits(cfg) });
+                true
+            }
+            SysctlClkNodeE::SysctlClkGnneAxiNoc
+            | SysctlClkNodeE::SysctlClkGnneAxiMctl => {
+                false
+            }
+
+            /*---------------------------NOC0------------------------------------*/
+            SysctlClkNodeE::SysctlClkNocClk0 => {
+                let mut cfg: u32 = 0;
+                match parent {
+                    SysctlClkNodeE::SysctlClkRootPll0Div2 => {
+                        cfg = ((0 << 0) | (1 << 24));
+                    }
+                    SysctlClkNodeE::SysctlClkRootPll1Div2 => {
+                        cfg = ((1 << 0) | (1 << 24));
+                    }
+                    _ => panic!("unsupported leaf node in sysctl_clk_set_leaf_parent!")
+                }
+                sysctl.0.noc_clk_cfg.write(|w| unsafe { w.bits(cfg) });
+                true
+            }
+            SysctlClkNodeE::SysctlClkNocClk0Div2
+            | SysctlClkNodeE::SysctlClkNocClk0Div3 
+            | SysctlClkNodeE::SysctlClkNocClk0Div4 => {
+                false
+            }
+            SysctlClkNodeE::SysctlClkNocClk0PeriDmaAxi
+            | SysctlClkNodeE::SysctlClkNocClk0SysDmaAxi
+            | SysctlClkNodeE::SysctlClkNocClk0Sram0Axi
+            | SysctlClkNodeE::SysctlClkNocClk0Sram1Axi
+            | SysctlClkNodeE::SysctlClkNocClk0AxiP3 => {
+                false
+            }
+            SysctlClkNodeE::SysctlClkNocClk0Div2MctlAhb
+            | SysctlClkNodeE::SysctlClkNocClk0Div2UsbAhb
+            | SysctlClkNodeE::SysctlClkNocClk0Div2SdSlvAhb => {
+                false
+            }
+            SysctlClkNodeE::SysctlClkNocClk0Div3Sd0Ahb
+            | SysctlClkNodeE::SysctlClkNocClk0Div3Sd1Ahb
+            | SysctlClkNodeE::SysctlClkNocClk0Div3Sd2Ahb
+            | SysctlClkNodeE::SysctlClkNocClk0Div3EmacAhb
+            | SysctlClkNodeE::SysctlClkNocClk0Div3PeriDmaApb
+            | SysctlClkNodeE::SysctlClkNocClk0Div3SysDmaApb => {
+                false
+            }
+            SysctlClkNodeE::SysctlClkNocClk0Div4Wdt0Apb
+            | SysctlClkNodeE::SysctlClkNocClk0Div4Wdt1Apb
+            | SysctlClkNodeE::SysctlClkNocClk0Div4Wdt2Apb
+            | SysctlClkNodeE::SysctlClkNocClk0Div4TimerApb
+            | SysctlClkNodeE::SysctlClkNocClk0Div4RtcApb
+            | SysctlClkNodeE::SysctlClkNocClk0Div4GpioApb
+            | SysctlClkNodeE::SysctlClkNocClk0Div4IomuxApb
+            | SysctlClkNodeE::SysctlClkNocClk0Div4I2c0Apb
+            | SysctlClkNodeE::SysctlClkNocClk0Div4I2c1Apb
+            | SysctlClkNodeE::SysctlClkNocClk0Div4I2c2Apb
+            | SysctlClkNodeE::SysctlClkNocClk0Div4I2c3Apb
+            | SysctlClkNodeE::SysctlClkNocClk0Div4I2c4Apb
+            | SysctlClkNodeE::SysctlClkNocClk0Div4I2c5Apb
+            | SysctlClkNodeE::SysctlClkNocClk0Div4I2c6Apb
+            | SysctlClkNodeE::SysctlClkNocClk0Div4PwmApb
+            | SysctlClkNodeE::SysctlClkNocClk0Div4MailboxApb
+            | SysctlClkNodeE::SysctlClkNocClk0Div4VadApb => {
+                false
+            }
+            
+            /*---------------------------NOC1------------------------------------*/
+            SysctlClkNodeE::SysctlClkNocClk1 => {
+                false
+            }
+
+            SysctlClkNodeE::SysctlClkNocClk1AxiMctl
+            | SysctlClkNodeE::SysctlClkNocClk1H264Axi
+            | SysctlClkNodeE::SysctlClkNocClk1VoAxi
+            | SysctlClkNodeE::SysctlClkNocClk1TwodAxi
+            | SysctlClkNodeE::SysctlClkNocClk1MfbcAxi
+            | SysctlClkNodeE::SysctlClkNocClk1ViAxi
+            | SysctlClkNodeE::SysctlClkNocClk1IspF2kAxi
+            | SysctlClkNodeE::SysctlClkNocClk1IspR2kAxi
+            | SysctlClkNodeE::SysctlClkNocClk1IspTofAxi
+
+            | SysctlClkNodeE::SysctlClkNocClk1PeriApb
+
+            | SysctlClkNodeE::SysctlClkNocClk1PeriApbUart0Apb
+            | SysctlClkNodeE::SysctlClkNocClk1PeriApbUart1Apb
+            | SysctlClkNodeE::SysctlClkNocClk1PeriApbUart2Apb
+            | SysctlClkNodeE::SysctlClkNocClk1PeriApbUart3Apb
+            | SysctlClkNodeE::SysctlClkNocClk1PeriApbAudioApb
+            
+            | SysctlClkNodeE::SysctlClkNocClk1PeriAhb
+            | SysctlClkNodeE::SysctlClkNocClk1PeriAhbSpi0Ahb
+            | SysctlClkNodeE::SysctlClkNocClk1PeriAhbSpi1Ahb
+            | SysctlClkNodeE::SysctlClkNocClk1PeriAhbSpi2Ahb
+            | SysctlClkNodeE::SysctlClkNocClk1PeriAhbSpi3Ahb => {
+                false
+            }
+
+            SysctlClkNodeE::SysctlClkNocClk1Div4 => {
+                false
+            }
+
+            SysctlClkNodeE::SysctlClkNocClk1Csi0Apb
+            | SysctlClkNodeE::SysctlClkNocClk1Csi1Apb
+            | SysctlClkNodeE::SysctlClkNocClk1Csi2Apb
+            | SysctlClkNodeE::SysctlClkNocClk1Csi3Apb
+            | SysctlClkNodeE::SysctlClkNocClk1F2kApb
+            | SysctlClkNodeE::SysctlClkNocClk1R2kApb
+            | SysctlClkNodeE::SysctlClkNocClk1TofApb
+            | SysctlClkNodeE::SysctlClkNocClk1MfbcApb
+            | SysctlClkNodeE::SysctlClkNocClk1MipiCornerApb
+            | SysctlClkNodeE::SysctlClkNocClk1ViApb => {
+                false
+            }
+
+            /*---------------------------DISPLAY------------------------------------*/
+            SysctlClkNodeE::SysctlClkDispSysAndApbClkDiv => {
+                false
+            }
+            SysctlClkNodeE::SysctlClkDispSysAndApbClkDivDsiApb
+            | SysctlClkNodeE::SysctlClkDispSysAndApbClkDivDsiSystem
+            | SysctlClkNodeE::SysctlClkDispSysAndApbClkDivVoApb
+            | SysctlClkNodeE::SysctlClkDispSysAndApbClkDivTwodApb
+            | SysctlClkNodeE::SysctlClkDispSysAndApbClkDivBt1120Apb => {
+                false
+            }
+            
+            /*---------------------------csi0_system_clk-----------------------------*/
+            SysctlClkNodeE::SysctlClkCsi0System => {
+                false
+            }
+
+            /*---------------------------csi1_system_clk-----------------------------*/
+            SysctlClkNodeE::SysctlClkCsi1System => {
+                false
+            }
+
+            /*---------------------------csi0_pixel_clk------------------------------*/
+            SysctlClkNodeE::SysctlClkCsi0Pixel => {
+                false
+            }
+
+            /*---------------------------csi1_pixel_clk------------------------------*/
+            SysctlClkNodeE::SysctlClkCsi1Pixel => {
+                let mut cfg: u32 = 0;
+                match parent {
+                    SysctlClkNodeE::SysctlClkRootPll2Div4 => {
+                        cfg = ((0 << 9) | (1 << 26));
+                    }
+                    SysctlClkNodeE::SysctlClkRootPll2Div3 => {
+                        cfg = ((1 << 9) | (1 << 26));
+                    }
+                    SysctlClkNodeE::SysctlClkRootPll0 => {
+                        cfg = ((2 << 9) | (1 << 26));
+                    }
+                    SysctlClkNodeE::SysctlClkRootPll1 => {
+                        cfg = ((3 << 9) | (1 << 26));
+                    }
+                    _ => panic!("unsupported leaf node in sysctl_clk_set_leaf_parent!")
+                }
+                sysctl.0.csi_pixel_clk_cfg[1].write(|w| unsafe{ w.bits(cfg) });
+                true
+            }
+
+            /*---------------------------tpg_pixel_clk------------------------------*/
+            SysctlClkNodeE::SysctlClkTpgPixel => {
+                false
+            }
+
+            /*---------------------------disp_pixel_clk------------------------------*/
+            SysctlClkNodeE::SysctlClkDisplayPixel => {
+                let mut cfg: u32 = 0;
+                match parent {
+                    SysctlClkNodeE::SysctlClkRootPll2Div4 => {
+                        cfg = ((0 << 9) | (1 << 26));
+                    }
+                    SysctlClkNodeE::SysctlClkRootPll2Div3 => {
+                        cfg = ((1 << 9) | (1 << 26));
+                    }
+                    SysctlClkNodeE::SysctlClkRootPll0 => {
+                        cfg = ((2 << 9) | (1 << 26));
+                    }
+                    SysctlClkNodeE::SysctlClkRootPll1 => {
+                        cfg = ((3 << 9) | (1 << 26));
+                    }
+                    _ => panic!("unsupported leaf node in sysctl_clk_set_leaf_parent!")
+                }
+                sysctl.0.disp_pixel_clk_cfg.write(|w| unsafe{ w.bits(cfg) });
+                true
+            }
+
+            /*---------------------------audio_out_serial_clk------------------------------*/
+            SysctlClkNodeE::SysctlClkAudioOutSerial => {
+                false //always pll1_div3
+            }
+
+            /*---------------------------audio_in_serial_clk------------------------------*/
+            SysctlClkNodeE::SysctlClkAudioInSerial => {
+                false //always pll1_div3
+            }
+
+            /*---------------------------sd master/sd 0/1/2 clk------------------------------*/
+            SysctlClkNodeE::SysctlClkSdMaster => {
+                false //always pll0
+            }
+            SysctlClkNodeE::SysctlClkSdMasterSd0 => {
+                false //always SYSCTL_CLK_SD_MASTER
+            }
+            SysctlClkNodeE::SysctlClkSdMasterSd1 => {
+                false //always SYSCTL_CLK_SD_MASTER
+            }
+            SysctlClkNodeE::SysctlClkSdMasterSd2 => {
+                false //always SYSCTL_CLK_SD_MASTER
+            }
+
+            /*---------------------------mipi clocks-----------------------------------------*/
+            SysctlClkNodeE::SysctlClkMipiRef => {
+                let mut cfg: u32 = 0;
+                match parent {
+                    SysctlClkNodeE::SysctlClkRootPll2Div2 => {
+                        cfg = ((0 << 2) | (1 << 18));
+                    }
+                    SysctlClkNodeE::SysctlClkRootPll1 => {
+                        cfg = ((1 << 2) | (1 << 18));
+                    }
+                    _ => panic!("unsupported leaf node in sysctl_clk_set_leaf_parent!")
+                }
+                sysctl.0.txdphy_clk_en.write(|w| unsafe{ w.bits(cfg) });
+                true
+            }
+            SysctlClkNodeE::SysctlClkMipiRefTxphyRef => {
+                false
+            }
+            SysctlClkNodeE::SysctlClkMipiRefRxphyRef => {
+                false
+            }
+            SysctlClkNodeE::SysctlClkMipiRefTxphyPll => {
+                false
+            }
+
+            /*---------------------------security ahb clocks-----------------------------------------*/
+            SysctlClkNodeE::SysctlClkSecHclk => {
+                false /* always pll1 div 3*/
+            }
+            SysctlClkNodeE::SysctlClkPufHclk
+            | SysctlClkNodeE::SysctlClkOtpHclk
+            | SysctlClkNodeE::SysctlClkRomHclk
+            | SysctlClkNodeE::SysctlClkRsaHclk
+            | SysctlClkNodeE::SysctlClkAesHclk
+            | SysctlClkNodeE::SysctlClkShaHclk => {
+                false /* always SYSCTL_CLK_SEC_HCLK*/
+            }
+
+            /*---------------------------ddr controller core clocks-----------------------------------*/
+            SysctlClkNodeE::SysctlClkDdrControllerCore => {
+                let mut cfg: u32 = 0;
+                match parent {
+                    SysctlClkNodeE::SysctlClkRootPll1 => {
+                        cfg = (0 << 0) | (1 << 16);
+                    }
+                    SysctlClkNodeE::SysctlClkRootPll2Div2 => {
+                        cfg = (1 << 0) | (1 << 16);
+                    }
+                    SysctlClkNodeE::SysctlClkRootPll3Div3 => {
+                        cfg = (2 << 0) | (1 << 16);
+                    }
+                    SysctlClkNodeE::SysctlClkRootPll3Div2 => {
+                        cfg = (3 << 0) | (1 << 16);
+                    }
+                    _ => panic!("unsupported leaf node in sysctl_clk_set_leaf_parent!")
+                }
+                sysctl.0.mem_ctl_clk_cfg.write(|w| unsafe{ w.bits(cfg) });
+                true
+            }
+
+            /*---------------------------emac loopback clock------------------------------------------*/
+            SysctlClkNodeE::SysctlClkEmacLoopback => {
+                false
+            }
+
+            /*---------------------------uart system clock--------------------------------------------*/
+            SysctlClkNodeE::SysctlClkUart3Sclk => {
+                let mut cfg: u32 = 0;
+                match parent {
+                    SysctlClkNodeE::SysctlClkRootOscIn0 => {
+                        cfg = ((0 << 0) | (1 << 24));
+                    }
+                    SysctlClkNodeE::SysctlClkRootPll0Div4 => {
+                        cfg = ((1 << 0) | (1 << 24));
+                    }
+                    _ => panic!("unsupported leaf node in sysctl_clk_set_leaf_parent!")
+                }
+                sysctl.0.uart_sclk_cfg[3].write(|w| unsafe{ w.bits(cfg) });
+                true
+            }
+            SysctlClkNodeE::SysctlClkUart2Sclk => {
+                let mut cfg: u32 = 0;
+                match parent {
+                    SysctlClkNodeE::SysctlClkRootOscIn0 => {
+                        cfg = ((0 << 0) | (1 << 24));
+                    }
+                    SysctlClkNodeE::SysctlClkRootPll0Div4 => {
+                        cfg = ((1 << 0) | (1 << 24));
+                    }
+                    _ => panic!("unsupported leaf node in sysctl_clk_set_leaf_parent!")
+                }
+                sysctl.0.uart_sclk_cfg[2].write(|w| unsafe{ w.bits(cfg) });
+                true
+            }
+            SysctlClkNodeE::SysctlClkUart1Sclk => {
+                let mut cfg: u32 = 0;
+                match parent {
+                    SysctlClkNodeE::SysctlClkRootOscIn0 => {
+                        cfg = ((0 << 0) | (1 << 24));
+                    }
+                    SysctlClkNodeE::SysctlClkRootPll0Div4 => {
+                        cfg = ((1 << 0) | (1 << 24));
+                    }
+                    _ => panic!("unsupported leaf node in sysctl_clk_set_leaf_parent!")
+                }
+                sysctl.0.uart_sclk_cfg[1].write(|w| unsafe{ w.bits(cfg) });
+                true
+            }
+            SysctlClkNodeE::SysctlClkUart0Sclk => {
+                let mut cfg: u32 = 0;
+                match parent {
+                    SysctlClkNodeE::SysctlClkRootOscIn0 => {
+                        cfg = ((0 << 0) | (1 << 24));
+                    }
+                    SysctlClkNodeE::SysctlClkRootPll0Div4 => {
+                        cfg = ((1 << 0) | (1 << 24));
+                    }
+                    _ => panic!("unsupported leaf node in sysctl_clk_set_leaf_parent!")
+                }
+                sysctl.0.uart_sclk_cfg[0].write(|w| unsafe{ w.bits(cfg) });
+                true
+            }
+
+            /*---------------------------spi system clock---------------------------------------------*/
+            SysctlClkNodeE::SysctlClkSpi0Sclk => {
+                let mut cfg: u32 = 0;
+                match parent {
+                    SysctlClkNodeE::SysctlClkRootOscIn0 => {
+                        cfg = ((0 << 0) | (1 << 24));
+                    }
+                    SysctlClkNodeE::SysctlClkRootPll0 => {
+                        cfg = ((1 << 0) | (1 << 24));
+                    }
+                    _ => panic!("unsupported leaf node in sysctl_clk_set_leaf_parent!")
+                }
+                sysctl.0.spi_sclk_cfg[0].write(|w| unsafe{ w.bits(cfg) });
+                true
+            }
+            SysctlClkNodeE::SysctlClkSpi1Sclk => {
+                let mut cfg: u32 = 0;
+                match parent {
+                    SysctlClkNodeE::SysctlClkRootOscIn0 => {
+                        cfg = ((0 << 0) | (1 << 24));
+                    }
+                    SysctlClkNodeE::SysctlClkRootPll0 => {
+                        cfg = ((1 << 0) | (1 << 24));
+                    }
+                    _ => panic!("unsupported leaf node in sysctl_clk_set_leaf_parent!")
+                }
+                sysctl.0.spi_sclk_cfg[1].write(|w| unsafe{ w.bits(cfg) });
+                true
+            }
+            SysctlClkNodeE::SysctlClkSpi2Sclk => {
+                let mut cfg: u32 = 0;
+                match parent {
+                    SysctlClkNodeE::SysctlClkRootOscIn0 => {
+                        cfg = ((0 << 0) | (1 << 24));
+                    }
+                    SysctlClkNodeE::SysctlClkRootPll0 => {
+                        cfg = ((1 << 0) | (1 << 24));
+                    }
+                    _ => panic!("unsupported leaf node in sysctl_clk_set_leaf_parent!")
+                }
+                sysctl.0.spi_sclk_cfg[2].write(|w| unsafe{ w.bits(cfg) });
+                true
+            }
+            SysctlClkNodeE::SysctlClkSpi3Sclk => {
+                false /*always osc25m*/
+            }
+
+            /*---------------------------OTP system clock---------------------------------------------*/
+            SysctlClkNodeE::SysctlClkOtpSclk => {
+                false
+            }
+
+            /*---------------------------i2c system clock---------------------------------------------*/
+            SysctlClkNodeE::SysctlClkI2c0Sclk => {
+                let mut cfg: u32 = 0;
+                match parent {
+                    SysctlClkNodeE::SysctlClkRootPll0Div4 => {
+                        cfg = ((0 << 9) | (1 << 26));
+                    }
+                    SysctlClkNodeE::SysctlClkRootOscIn0 => {
+                        cfg = ((1 << 9) | (1 << 26));
+                    }
+                    _ => panic!("unsupported leaf node in sysctl_clk_set_leaf_parent!")
+                }
+                sysctl.0.i2c_icclk_cfg[0].write(|w| unsafe{ w.bits(cfg) });
+                true
+            }
+            SysctlClkNodeE::SysctlClkI2c1Sclk => {
+                let mut cfg: u32 = 0;
+                match parent {
+                    SysctlClkNodeE::SysctlClkRootPll0Div4 => {
+                        cfg = ((0 << 9) | (1 << 26));
+                    }
+                    SysctlClkNodeE::SysctlClkRootOscIn0 => {
+                        cfg = ((1 << 9) | (1 << 26));
+                    }
+                    _ => panic!("unsupported leaf node in sysctl_clk_set_leaf_parent!")
+                }
+                sysctl.0.i2c_icclk_cfg[1].write(|w| unsafe{ w.bits(cfg) });
+                true
+            }
+            SysctlClkNodeE::SysctlClkI2c2Sclk => {
+                let mut cfg: u32 = 0;
+                match parent {
+                    SysctlClkNodeE::SysctlClkRootPll0Div4 => {
+                        cfg = ((0 << 9) | (1 << 26));
+                    }
+                    SysctlClkNodeE::SysctlClkRootOscIn0 => {
+                        cfg = ((1 << 9) | (1 << 26));
+                    }
+                    _ => panic!("unsupported leaf node in sysctl_clk_set_leaf_parent!")
+                }
+                sysctl.0.i2c_icclk_cfg[2].write(|w| unsafe{ w.bits(cfg) });
+                true
+            }
+            SysctlClkNodeE::SysctlClkI2c3Sclk => {
+                let mut cfg: u32 = 0;
+                match parent {
+                    SysctlClkNodeE::SysctlClkRootPll0Div4 => {
+                        cfg = ((0 << 9) | (1 << 26));
+                    }
+                    SysctlClkNodeE::SysctlClkRootOscIn0 => {
+                        cfg = ((1 << 9) | (1 << 26));
+                    }
+                    _ => panic!("unsupported leaf node in sysctl_clk_set_leaf_parent!")
+                }
+                sysctl.0.i2c_icclk_cfg[3].write(|w| unsafe{ w.bits(cfg) });
+                true
+            }
+            SysctlClkNodeE::SysctlClkI2c4Sclk => {
+                let mut cfg: u32 = 0;
+                match parent {
+                    SysctlClkNodeE::SysctlClkRootPll0Div4 => {
+                        cfg = ((0 << 9) | (1 << 26));
+                    }
+                    SysctlClkNodeE::SysctlClkRootOscIn0 => {
+                        cfg = ((1 << 9) | (1 << 26));
+                    }
+                    _ => panic!("unsupported leaf node in sysctl_clk_set_leaf_parent!")
+                }
+                sysctl.0.i2c_icclk_cfg[4].write(|w| unsafe{ w.bits(cfg) });
+                true
+            }
+            SysctlClkNodeE::SysctlClkI2c5Sclk => {
+                let mut cfg: u32 = 0;
+                match parent {
+                    SysctlClkNodeE::SysctlClkRootPll0Div4 => {
+                        cfg = ((0 << 9) | (1 << 26));
+                    }
+                    SysctlClkNodeE::SysctlClkRootOscIn0 => {
+                        cfg = ((1 << 9) | (1 << 26));
+                    }
+                    _ => panic!("unsupported leaf node in sysctl_clk_set_leaf_parent!")
+                }
+                sysctl.0.i2c_icclk_cfg[5].write(|w| unsafe{ w.bits(cfg) });
+                true
+            }
+            SysctlClkNodeE::SysctlClkI2c6Sclk => {
+                let mut cfg: u32 = 0;
+                match parent {
+                    SysctlClkNodeE::SysctlClkRootPll0Div4 => {
+                        cfg = ((0 << 9) | (1 << 26));
+                    }
+                    SysctlClkNodeE::SysctlClkRootOscIn0 => {
+                        cfg = ((1 << 9) | (1 << 26));
+                    }
+                    _ => panic!("unsupported leaf node in sysctl_clk_set_leaf_parent!")
+                }
+                sysctl.0.i2c_icclk_cfg[6].write(|w| unsafe{ w.bits(cfg) });
+                true
+            }
+
+            /*---------------------------wdt system clock---------------------------------------------*/
+            SysctlClkNodeE::SysctlClkWdt0Tclk
+            | SysctlClkNodeE::SysctlClkWdt1Tclk
+            | SysctlClkNodeE::SysctlClkWdt2Tclk => {
+                false
+            }
+
+            /*---------------------------vad system clk-----------------------------------------------*/
+            SysctlClkNodeE::SysctlClkVadTclk => {
+                false
+            }
+
+            /*---------------------------timer0-5 system clock----------------------------------------*/
+            SysctlClkNodeE::SysctlClkTimer0Tclk => {
+                let mut cfg: u32 = 0;
+                match parent {
+                    SysctlClkNodeE::SysctlClkRootOscIn1 => {
+                        cfg = ((0 << 0) | (1 << 24));
+                    }
+                    SysctlClkNodeE::SysctlClkRootOscIn0 => {
+                        cfg = ((1 << 0) | (1 << 24));
+                    }
+                    _ => panic!("unsupported leaf node in sysctl_clk_set_leaf_parent!")
+                }
+                sysctl.0.timer_tclk_src.write(|w| unsafe{ w.bits(cfg) });
+                true
+            }
+            SysctlClkNodeE::SysctlClkTimer1Tclk => {
+                let mut cfg: u32 = 0;
+                match parent {
+                    SysctlClkNodeE::SysctlClkRootOscIn1 => {
+                        cfg = ((0 << 4) | (1 << 25));
+                    }
+                    SysctlClkNodeE::SysctlClkRootOscIn0 => {
+                        cfg = ((1 << 4) | (1 << 25));
+                    }
+                    _ => panic!("unsupported leaf node in sysctl_clk_set_leaf_parent!")
+                }
+                sysctl.0.timer_tclk_src.write(|w| unsafe{ w.bits(cfg) });
+                true
+            }
+            SysctlClkNodeE::SysctlClkTimer2Tclk => {
+                let mut cfg: u32 = 0;
+                match parent {
+                    SysctlClkNodeE::SysctlClkRootOscIn1 => {
+                        cfg = ((0 << 8) | (1 << 26));
+                    }
+                    SysctlClkNodeE::SysctlClkRootOscIn0 => {
+                        cfg = ((1 << 8) | (1 << 26));
+                    }
+                    _ => panic!("unsupported leaf node in sysctl_clk_set_leaf_parent!")
+                }
+                sysctl.0.timer_tclk_src.write(|w| unsafe{ w.bits(cfg) });
+                true
+            }
+            SysctlClkNodeE::SysctlClkTimer3Tclk => {
+                let mut cfg: u32 = 0;
+                match parent {
+                    SysctlClkNodeE::SysctlClkRootOscIn1 => {
+                        cfg = ((0 << 12) | (1 << 27));
+                    }
+                    SysctlClkNodeE::SysctlClkRootOscIn0 => {
+                        cfg = ((1 << 12) | (1 << 27));
+                    }
+                    _ => panic!("unsupported leaf node in sysctl_clk_set_leaf_parent!")
+                }
+                sysctl.0.timer_tclk_src.write(|w| unsafe{ w.bits(cfg) });
+                true
+            }
+            SysctlClkNodeE::SysctlClkTimer4Tclk => {
+                let mut cfg: u32 = 0;
+                match parent {
+                    SysctlClkNodeE::SysctlClkRootOscIn1 => {
+                        cfg = ((0 << 16) | (1 << 28));
+                    }
+                    SysctlClkNodeE::SysctlClkRootOscIn0 => {
+                        cfg = ((1 << 16) | (1 << 28));
+                    }
+                    _ => panic!("unsupported leaf node in sysctl_clk_set_leaf_parent!")
+                }
+                sysctl.0.timer_tclk_src.write(|w| unsafe{ w.bits(cfg) });
+                true
+            }
+            SysctlClkNodeE::SysctlClkTimer5Tclk => {
+                let mut cfg: u32 = 0;
+                match parent {
+                    SysctlClkNodeE::SysctlClkRootOscIn1 => {
+                        cfg = ((0 << 20) | (1 << 29));
+                    }
+                    SysctlClkNodeE::SysctlClkRootOscIn0 => {
+                        cfg = ((1 << 20) | (1 << 29));
+                    }
+                    _ => panic!("unsupported leaf node in sysctl_clk_set_leaf_parent!")
+                }
+                sysctl.0.timer_tclk_src.write(|w| unsafe{ w.bits(cfg) });
+                true
+            }
+
+            /*------------------------------------usb clock-------------------------------------------*/
+            SysctlClkNodeE::SysctlClkUsbPhyCore => {
+                false
+            }
+            SysctlClkNodeE::SysctlClkUsbWakeup => {
+                false
+            }
 
             _ => panic!("unsupported leaf node in sysctl_clk_set_leaf_parent!")
         }
