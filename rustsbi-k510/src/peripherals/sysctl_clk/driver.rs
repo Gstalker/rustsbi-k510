@@ -1805,6 +1805,27 @@ pub fn sysctl_clk_find_approximate(
 
 #[allow(unused)]
 pub fn sysctl_boot_get_boot_mode() -> SysctlBootModeE {
-    // TODO
-    SysctlBootModeE::SysctlBootMax
+    if let Some(sysctl) = SYSCTL.get() {
+        let soc_boot_ctl = sysctl.0.soc_boot_ctl.read().bits();
+        match soc_boot_ctl {
+            1 => {
+                SysctlBootModeE::SysctlBootSdcard
+            }
+            2 => {
+                SysctlBootModeE::SysctlBootFlash
+            }
+            3 => {
+                SysctlBootModeE::SysctlBootEmmc
+            }
+            4 => {
+                SysctlBootModeE::SysctlBootDownload
+            }
+            _ => {
+                panic!("unsupported leaf node in sysctl_boot_get_boot_mode!")
+            }
+        }
+    }
+    else {
+        panic!("SYSCTL is Null!")
+    }
 }
