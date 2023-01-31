@@ -4,6 +4,7 @@ pub enum SysctlClkMulDivMethordE {
     SysctlClkMulDivChangeable,
 }
 
+#[derive(PartialEq, Eq, PartialOrd, Ord, Copy)]
 pub enum SysctlClkNodeE {
     /*********************************************************************************************************/
     /*********************************************************************************************************/

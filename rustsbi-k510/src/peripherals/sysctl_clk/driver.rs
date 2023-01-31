@@ -1698,8 +1698,16 @@ pub fn sysctl_clk_get_phase(leaf: SysctlClkNodeE) -> u32 {
 /* 计算当前时钟节点的频率, 这个API会搜索整个时钟路径，从时钟源开始计算每一级的分频，最终得出当前时钟频率 */
 #[allow(unused)]
 pub fn sysctl_clk_get_leaf_freq(leaf: SysctlClkNodeE) -> u32 {
-    
-    0
+    let mut div: f64 = 1.0;
+    let mut node: SysctlClkNodeE = leaf;
+
+    while node > SysctlClkNodeE::SysctlClkRootMax {
+        div *= sysctl_clk_get_leaf_freq(node) as f64;
+        node = sysctl_clk_get_leaf_parent(node);
+    }
+
+
+    (sysctl_boot_get_root_clk_freq(node) as f64 * div) as u32
 }
 
 
